@@ -9,14 +9,18 @@
  include(CheckSymbolExists)
  
  option(
-@@ -109,9 +109,8 @@
+@@ -109,9 +109,12 @@
    string(TOUPPER ${name} key)
    set(_find_dependency "")
    set(_find_dependency_args "")
 -  if(FIND_PACKAGE2_${name}_ENABLED)
 -    find_package2(${name} QUIET OUT_DEPENDENCY _find_dependency)
 -  else()
-+  find_package2(${name} QUIET)
++  if(WIN32 AND "${name}" STREQUAL "ODBC")
++    find_package(${name} QUIET MODULE)
++  else()
++    find_package2(${name} QUIET)
++  endif()
 +  if(FALSE)
      set(_find_package_args)
      # For some reason passing the HDF5 version requirement cause a linking error of the libkea driver on Conda Windows builds...

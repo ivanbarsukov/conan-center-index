@@ -251,7 +251,7 @@ class GdalConan(ConanFile):
             self.requires("mariadb-connector-c/3.3.3")
         if self.options.with_netcdf:
             self.requires("netcdf/4.8.1")
-        if self.options.with_odbc:
+        if self.options.with_odbc and self.settings.os != "Windows":
             self.requires("odbc/2.3.11")
         if self.options.with_opencl:
             self.requires("opencl-icd-loader/2023.12.14")
@@ -742,7 +742,10 @@ class GdalConan(ConanFile):
         if self.options.with_netcdf:
             self.cpp_info.requires.extend(["netcdf::netcdf"])
         if self.options.with_odbc:
-            self.cpp_info.requires.extend(["odbc::odbc"])
+            if self.settings.os == "Windows":
+                self.cpp_info.system_libs.extend(["odbc32", "odbccp32"])
+            else:
+                self.cpp_info.requires.extend(["odbc::odbc"])
         if self.options.with_opencl:
             self.cpp_info.requires.extend(["opencl-icd-loader::opencl-icd-loader"])
         if self.options.with_openjpeg:
