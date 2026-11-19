@@ -17,5 +17,10 @@ if(BUILD_MODULE)
     endif()
 endif()
 
+if(BUILD_SABI_MODULE)
+    find_package(Python3 REQUIRED COMPONENTS Development.SABIModule)
+    python3_add_library(stable_module MODULE USE_SABI 3.8 stable_module.c)
+endif()
+
 add_executable(${PROJECT_NAME} "test_package.c")
 target_link_libraries(${PROJECT_NAME} PRIVATE Python3::Python)

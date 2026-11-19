@@ -25,7 +25,7 @@ class TestPackageConan(ConanFile):
         # The interesting problem that arises here is if you have CMake installed
         # with your global pip, then it will fail to run in this test package.
         # To avoid that, just add a requirement on CMake.
-        self.tool_requires("cmake/[>=3.16 <4]")
+        self.tool_requires("cmake/[>=3.26 <4]")
 
     def layout(self):
         cmake_layout(self)
@@ -66,6 +66,7 @@ class TestPackageConan(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_MODULE"] = self._supports_modules
+        tc.cache_variables["BUILD_SABI_MODULE"] = is_msvc(self) and self._cpython_option("shared")
         tc.generate()
 
         deps = CMakeDeps(self)
@@ -167,6 +168,8 @@ class TestPackageConan(ConanFile):
                     os.environ["PYTHONPATH"] = os.path.join(self.build_folder, self.cpp.build.libdirs[0])
                     self.output.info("Testing module (spam) using cmake built module")
                     self._test_module("spam", True)
+                    if is_msvc(self):
+                        self.run(f'"{self._python}" -c "import stable_module; assert stable_module.value() == 42"', env="conanrun")
 
                     if self._test_setuptools:
                         os.environ["PYTHONPATH"] = os.path.join(self.build_folder, "lib_setuptools")

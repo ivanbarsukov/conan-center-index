@@ -588,6 +588,7 @@ class CPythonConan(ConanFile):
             "--include-pip",
             "--include-venv",
             "--include-dev",
+            "--include-stable",
         ]
         if self.options.with_tkinter:
             layout_args.append("--include-tcltk")
@@ -684,6 +685,8 @@ class CPythonConan(ConanFile):
         unset(Python${_CONAN_PYTHON_SUFFIX}_INCLUDE_DIRS)
         unset(Python${_CONAN_PYTHON_SUFFIX}_INCLUDE_DIR)
 
+        @WINDOWS_STABLE_ABI_INPUTS@
+
         include(${CMAKE_ROOT}/Modules/FindPython${_CONAN_PYTHON_SUFFIX}.cmake)
 
         # Sanity check: The former comes from FindPython(3), the latter comes from the injected find module
@@ -695,7 +698,11 @@ class CPythonConan(ConanFile):
             set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::Module PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
         endif()
         if (TARGET Python${_CONAN_PYTHON_SUFFIX}::SABIModule)
-            set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+            if (TARGET cpython::stable)
+                set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::stable)
+            else()
+                set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+            endif()
         endif()
         if (TARGET Python${_CONAN_PYTHON_SUFFIX}::Python)
             set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::Python PROPERTIES INTERFACE_LINK_LIBRARIES cpython::embed)
@@ -712,6 +719,19 @@ class CPythonConan(ConanFile):
 
         cmake_file = os.path.join(self.package_folder, self._cmake_module_path, "use_conan_python.cmake")
         content = template.replace("@PYTHON_EXECUTABLE@", python_exe).replace("@PYTHON_LIBRARY@", python_library)
+        stable_inputs = ""
+        if is_msvc(self) and self.options.shared:
+            stable_inputs = textwrap.dedent("""
+            set(Python${_CONAN_PYTHON_SUFFIX}_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../include")
+            set(Python${_CONAN_PYTHON_SUFFIX}_SABI_LIBRARY "${CMAKE_CURRENT_LIST_DIR}/../@STABLE_LIB_NAME@.lib")
+            if ("Development.SABIModule" IN_LIST Python${_CONAN_PYTHON_SUFFIX}_FIND_COMPONENTS
+                AND NOT "Development.Module" IN_LIST Python${_CONAN_PYTHON_SUFFIX}_FIND_COMPONENTS
+                AND NOT "Development.Embed" IN_LIST Python${_CONAN_PYTHON_SUFFIX}_FIND_COMPONENTS
+                AND NOT "Development" IN_LIST Python${_CONAN_PYTHON_SUFFIX}_FIND_COMPONENTS)
+                set(Python${_CONAN_PYTHON_SUFFIX}_LIBRARY "")
+            endif()
+            """).replace("@STABLE_LIB_NAME@", self._stable_lib_name)
+        content = content.replace("@WINDOWS_STABLE_ABI_INPUTS@", stable_inputs)
         save(self, cmake_file, content)
 
     def package(self):
@@ -804,6 +824,11 @@ class CPythonConan(ConanFile):
             lib_ext = self._abi_suffix
         return f"python{self._version_suffix}{lib_ext}"
 
+    @property
+    def _stable_lib_name(self):
+        suffix = "_d" if self.settings.build_type == "Debug" else ""
+        return f"python3{suffix}"
+
     def package_info(self):
         py_version = Version(self.version)
         # python component: "Build a C extension for Python"
@@ -835,6 +860,12 @@ class CPythonConan(ConanFile):
             "pkg_config_aliases", [f"python{py_version.major}"]
         )
         self.cpp_info.components["python"].libdirs = []
+
+        if is_msvc(self) and self.options.shared:
+            self.cpp_info.components["stable"].libs = [self._stable_lib_name]
+            self.cpp_info.components["stable"].libdirs = [libdir]
+            self.cpp_info.components["stable"].includedirs = []
+            self.cpp_info.components["stable"].requires = ["python"]
 
         # embed component: "Embed Python into an application"
         self.cpp_info.components["embed"].libs = [self._lib_name]
