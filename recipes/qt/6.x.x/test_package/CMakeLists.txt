@@ -8,6 +8,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core Qt6::Network Qt6::Sql Qt
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 set_target_properties(${PROJECT_NAME} PROPERTIES AUTOMOC ON AUTORCC ON)
 
+if(TEST_QT_LOTTIE)
+    if(QT_PACKAGE_VERSION VERSION_GREATER_EQUAL "6.10.0")
+        find_package(Qt6 REQUIRED COMPONENTS Lottie CONFIG)
+        target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Lottie)
+    else()
+        find_package(Qt6 REQUIRED COMPONENTS Bodymovin CONFIG)
+        target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Bodymovin)
+    endif()
+endif()
+
 # Only running this Qt macros in macOS
 if (APPLE)
     # Related to https://github.com/conan-io/conan-center-index/issues/20574

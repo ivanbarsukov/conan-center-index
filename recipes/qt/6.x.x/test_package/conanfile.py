@@ -29,6 +29,8 @@ class TestPackageConan(ConanFile):
 Prefix = {path}""")
 
         tc = CMakeToolchain(self)
+        tc.variables["TEST_QT_LOTTIE"] = self.dependencies["qt"].options.get_safe("qtlottie", False)
+        tc.variables["QT_PACKAGE_VERSION"] = str(self.dependencies["qt"].ref.version)
         if 'qt' in self.dependencies.build:
             qt_tools_rootdir = self.conf.get("user.qt:tools_directory", None)
             for tool in ["moc", "rcc", "uic"]:
